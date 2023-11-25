@@ -1,0 +1,30 @@
+- name: "{{ item }} / create directories"
+  file:
+    state: directory
+    path: "{{ dir }}"
+  loop:
+    - "{{ dockers_dir }}/{{ item }}"
+  loop_control:
+    loop_var: dir
+
+- name: "{{ item }} / deploy"
+  docker_container:
+    state: started
+    name: "{{ item }}"
+    image: gitea/gitea:latest
+    restart_policy: unless-stopped
+    networks:
+      - name: traefik
+    user: "0"
+    volumes:
+      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro
+      - "{{ dockers_dir }}/{{ item }}:/data"
+    labels:
+      traefik.enable: "true"
+      traefik.http.services.gitea.loadBalancer.server.port: "3000"
+
+      homepage.group: "services"
+      homepage.name: "{{ item }}"
+      homepage.icon: "{{ item }}"
+      homepage.href: "http://{{ item }}.{{ inventory_hostname }}"

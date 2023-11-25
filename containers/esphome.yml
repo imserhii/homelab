@@ -1,0 +1,35 @@
+- name: "{{ item }} / create directories"
+  file:
+    state: directory
+    path: "{{ dir }}"
+  loop:
+    - "{{ dockers_dir }}/{{ item }}"
+  loop_control:
+    loop_var: dir
+
+- name: "{{ item }} / deploy"
+  docker_container:
+    state: started
+    name: "{{ item }}"
+    image: ghcr.io/esphome/esphome
+    restart_policy: unless-stopped
+    networks: 
+      - name: traefik
+    user: "0"
+    privileged: true
+    volumes:
+      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro
+      - "{{ dockers_dir }}/{{ item }}:/config"
+    labels:
+      traefik.enable: "true"
+      traefik.http.services.esphome.loadBalancer.server.port: "6052"
+
+      homepage.group: "services"
+      homepage.name: "{{ item }}"
+      homepage.icon: "{{ item }}"
+      homepage.href: "http://{{ item }}.{{ inventory_hostname }}"
+    env:
+      ESPHOME_DASHBOARD_USE_PING: "true"
+    devices:
+      - /dev/bus/usb:/dev/bus/usb

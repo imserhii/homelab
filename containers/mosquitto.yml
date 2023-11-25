@@ -1,0 +1,55 @@
+- name: "{{ item }} / create directories"
+  file:
+    state: directory
+    path: "{{ dir }}"
+  loop:
+    - "{{ dockers_dir }}/{{ item }}"
+    - "{{ dockers_dir }}/{{ item }}/config"
+  loop_control:
+    loop_var: dir
+
+- name: "{{ item }} / create password.txt"
+  register: mosquitto_password_file
+  copy:
+    force: false
+    dest: "{{ dockers_dir }}/{{ item }}/config/password.txt"
+    content: ""
+
+- name: "{{ item }} / add config"
+  register: mosquitto_config
+  copy:
+    dest: "{{ dockers_dir }}/{{ item }}/config/mosquitto.conf"
+    content: |
+      listener 1883
+      password_file /mosquitto/config/password.txt
+
+- name: "{{ item }} / deploy"
+  docker_container:
+    state: started
+    name: "{{ item }}"
+    image: eclipse-mosquitto:2.0
+    restart_policy: unless-stopped
+    user: "0"
+    volumes:
+      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro
+      - "{{ dockers_dir }}/{{ item }}/config:/mosquitto/config"
+      - "{{ dockers_dir }}/{{ item }}/log:/mosquitto/log"
+      - "{{ dockers_dir }}/{{ item }}/data:/mosquitto/data"
+    ports:
+      - "1883:1883"
+      - "9001:9001"
+
+- name: "{{ item }} / add user"
+  when: mosquitto_password_file.changed
+  community.docker.docker_container_exec:
+    container: "{{ item }}"
+    command: mosquitto_passwd -b /mosquitto/config/password.txt {{ ansible_user }} "{{ ansible_ssh_pass }}"
+    chdir: /root
+
+- name: "{{ item }} / restart"
+  when: mosquitto_password_file.changed
+  docker_container:
+    name: "{{ item }}"
+    state: started
+    restart: true

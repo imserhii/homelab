@@ -1,0 +1,76 @@
+- name: "{{ item }} / create directories"
+  file:
+    state: directory
+    path: "{{ dir }}"
+  loop:
+    - "{{ dockers_dir }}/{{ item }}"
+  loop_control:
+    loop_var: dir
+
+- name: "{{ item }} / add settings.yaml"
+  copy:
+    dest: "{{ dockers_dir }}/{{ item }}/settings.yaml"
+    content: |
+      title: {{ inventory_hostname }}
+      color: gray
+
+      layout:
+        widgets:
+          header: false
+        services:
+          header: false
+
+      hideVersion: true
+      statusStyle: dot
+      headerStyle: clean
+
+- name: "{{ item }} / add docker.yaml"
+  copy:
+    dest: "{{ dockers_dir }}/{{ item }}/docker.yaml"
+    content: |
+      my-docker:
+        socket: /var/run/docker.sock
+
+- name: "{{ item }} / add widgets.yaml"
+  copy:
+    dest: "{{ dockers_dir }}/{{ item }}/widgets.yaml"
+    content: |
+      - greeting:
+          text_size: xl
+          text: :~)
+
+- name: "{{ item }} / add services.yaml"
+  copy:
+    dest: "{{ dockers_dir }}/{{ item }}/services.yaml"
+    content: ""
+
+- name: "{{ item }} / add bookmarks.yaml"
+  copy:
+    dest: "{{ dockers_dir }}/{{ item }}/bookmarks.yaml"
+    content: ""
+
+- name: "{{ item }} / add custom.css"
+  copy:
+    dest: "{{ dockers_dir }}/{{ item }}/custom.css"
+    content: |
+      #footer {
+        display: none;
+      }
+
+- name: "{{ item }} / deploy"
+  docker_container:
+    state: started
+    name: "{{ item }}"
+    image: ghcr.io/gethomepage/homepage
+    restart_policy: unless-stopped
+    networks: 
+      - name: traefik
+    user: "0"
+    volumes:
+      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - "{{ dockers_dir }}/{{ item }}:/config"
+    labels:
+      traefik.enable: "true"
+      traefik.http.routers.homepage.rule: "Host(`{{ inventory_hostname }}`)"

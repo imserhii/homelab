@@ -1,0 +1,48 @@
+- name: "{{ item }} / create directories"
+  file:
+    state: directory
+    path: "{{ dir }}"
+  loop:
+    - "{{ dockers_dir }}/{{ item }}"
+  loop_control:
+    loop_var: dir
+
+- name: "{{ item }} / deploy"
+  docker_container:
+    state: started
+    name: "{{ item }}"
+    image: lscr.io/linuxserver/jackett:latest
+    restart_policy: unless-stopped
+    networks: 
+      - name: traefik
+    user: "0"
+    volumes:
+      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro
+      - "{{ dockers_dir }}/{{ item }}:/config"
+      - "{{ dockers_dir }}/transmission/watch:/downloads"
+    labels:
+      traefik.enable: "true"
+      traefik.http.services.jackett.loadBalancer.server.port: "9117"
+
+      homepage.group: "services"
+      homepage.name: "{{ item }}"
+      homepage.icon: "{{ item }}"
+      homepage.href: "http://{{ item }}.{{ inventory_hostname }}"
+
+- name: "{{ item }} / change config"
+  register: jackett_config
+  replace:
+    path: "{{ dockers_dir }}/{{ item }}/Jackett/ServerConfig.json"
+    regexp: '"{{ field.key }}": .*,'
+    replace: '"{{ field.key }}": {{ field.value }},'
+  loop:
+    - { key: "BlackholeDir", value: "\"/downloads/\"" }
+  loop_control:
+    loop_var: field
+
+- name: "{{ item }} / restart"
+  docker_container:
+    state: started
+    name: "{{ item }}"
+    restart: "{{ jackett_config.changed | default(false) }}"

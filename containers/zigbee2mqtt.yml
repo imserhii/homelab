@@ -1,0 +1,53 @@
+- name: "{{ item }} / create directories"
+  file:
+    state: directory
+    path: "{{ dir }}"
+  loop:
+    - "{{ dockers_dir }}/{{ item }}"
+  loop_control:
+    loop_var: dir
+
+- name: "{{ item }} / add config"
+  copy:
+    backup: true
+    force: false
+    dest: "{{ dockers_dir }}/{{ item }}/configuration.yaml"
+    content: |
+      permit_join: true
+      mqtt:
+        base_topic: zigbee2mqtt
+        server: mqtt://{{ inventory_hostname }}
+        user: {{ ansible_user }}
+        password: {{ ansible_ssh_pass }}
+      serial:
+        adapter: ezsp
+        port: /dev/ttyACM0
+      frontend:
+        port: 8080
+      advanced:
+        network_key: GENERATE
+
+- name: "{{ item }} / deploy"
+  docker_container:
+    state: started
+    name: "{{ item }}"
+    image: koenkk/zigbee2mqtt
+    restart_policy: unless-stopped
+    networks: 
+      - name: traefik
+    user: "0"
+    volumes:
+      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro
+      - /run/udev:/run/udev:ro
+      - "{{ dockers_dir }}/{{ item }}:/app/data"
+    labels:
+      traefik.enable: "true"
+      traefik.http.services.zigbee2mqtt.loadBalancer.server.port: "8080"
+
+      homepage.group: "services"
+      homepage.name: "{{ item }}"
+      homepage.icon: "{{ item }}"
+      homepage.href: "http://{{ item }}.{{ inventory_hostname }}"
+    devices:
+      - /dev/ttyACM0:/dev/ttyACM0

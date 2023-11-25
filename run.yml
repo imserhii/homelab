@@ -1,0 +1,30 @@
+- hosts: all
+
+  vars_files:
+    - creds.yml
+    
+  tasks:
+
+  - name: do base
+    include_tasks: "base/{{ item }}.yml"
+    loop:
+      - tweaks
+      - mount_hdd
+      - install_docker
+
+  - name: deploy containers
+    include_tasks: "containers/{{ item }}.yml"
+    loop:
+      - dnsmasq
+      - traefik
+      - homepage
+      - glances
+      - transmission
+      - mosquitto
+      - zigbee2mqtt
+      - homebridge
+      - node-red
+      - esphome
+      - jackett
+      - grafana
+      - gitea

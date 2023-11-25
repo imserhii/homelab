@@ -1,0 +1,48 @@
+- name: "{{ item }} / install packages"
+  apt:
+    name:
+      - python3-pexpect
+      - samba
+    state: latest
+    update_cache: true
+
+- name: "{{ item }} / enable"
+  service:
+    name: smbd.service
+    state: started
+    enabled: true
+
+- name: "{{ item }} / add config"
+  copy:
+    dest: /etc/samba/smb.conf
+    content: |
+      [global]
+        read raw = Yes
+        write raw = Yes
+        socket options = TCP_NODELAY IPTOS_LOWDELAY SO_RCVBUF=131072 SO_SNDBUF=131072
+        min receivefile size = 16384
+        use sendfile = true
+        aio read size = 16384
+        aio write size = 16384
+
+      [downloads]
+        path=/mnt/{{ hdd }}
+        read only=no
+        guest ok=no
+        valid users={{ ansible_user }}
+
+- name: "{{ item }} / check if user exists"
+  register: samba_user_exists
+  command: smbpasswd -e "{{ ansible_user }}"
+  ignore_errors: true
+  changed_when: false
+  failed_when: false
+
+- name: "{{ item }} / add user"
+  when: '"Failed to find user" in samba_user_exists.stderr'
+  expect:
+    command: smbpasswd -a {{ ansible_user }}
+    timeout: 3
+    responses:
+      "New SMB password": "{{ ansible_ssh_pass }}"
+      "Retype new SMB password": "{{ ansible_ssh_pass }}"

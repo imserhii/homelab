@@ -1,0 +1,82 @@
+- name: "{{ item }} / create directories"
+  file:
+    state: directory
+    path: "{{ dir }}"
+  loop:
+    - "{{ dockers_dir }}/{{ item }}"
+  loop_control:
+    loop_var: dir
+
+- name: "{{ item }} / create network"
+  docker_network:
+    name: traefik
+    state: present
+    driver: bridge
+    internal: no
+
+- name: "{{ item }} / add config"
+  register: traefik_config
+  copy:
+    dest: "{{ dockers_dir }}/{{ item }}/traefik.yml"
+    content: |
+      api:
+        dashboard: true
+      serversTransport:
+        insecureSkipVerify: true
+      providers:
+        docker:
+          defaultRule: Host(`{% raw %}{{ .Name }}{% endraw %}.{{ inventory_hostname }}`)
+          exposedByDefault: false
+          network: traefik
+        file:
+          filename: /etc/traefik/file_provider.yml
+
+- name: "{{ item }} / add file provider"
+  register: traefik_file_provider
+  copy:
+    dest: "{{ dockers_dir }}/{{ item }}/file_provider.yml"
+    content: |
+      http:
+        routers:
+          homebridge:
+            rule: Host(`homebridge.{{ inventory_hostname }}`)
+            service: homebridge
+          glances:
+            rule: Host(`glances.{{ inventory_hostname }}`)
+            service: glances
+        services:
+          homebridge:
+            loadBalancer:
+              servers:
+                - url: http://{{ inventory_hostname }}:8581
+          glances:
+            loadBalancer:
+              servers:
+                - url: http://{{ inventory_hostname }}:61208
+
+- name: "{{ item }} / deploy"
+  docker_container:
+    state: started
+    name: "{{ item }}"
+    image: traefik
+    restart_policy: unless-stopped
+    restart: "{{ traefik_config.changed | default(false) or traefik_file_provider.changed | default(false) }}"
+    user: "0"
+    networks:
+      - name: traefik
+    volumes:
+      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - "{{ dockers_dir }}/{{ item }}/:/etc/traefik"
+    labels:
+      traefik.enable: "true"
+      traefik.http.routers.dashboard.service: "api@internal"
+
+      homepage.group: "services"
+      homepage.name: "{{ item }}"
+      homepage.icon: "{{ item }}"
+      homepage.href: "http://{{ item }}.{{ inventory_hostname }}"
+    ports:
+      - 80:80
+      - 443:443

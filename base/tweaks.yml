@@ -1,0 +1,6 @@
+- name: "{{ item }} / remove welcome message"
+  file:
+    path: "/home/{{ ansible_user }}/.hushlogin"
+    state: touch
+    modification_time: preserve
+    access_time: preserve

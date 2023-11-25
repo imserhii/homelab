@@ -1,0 +1,44 @@
+- name: "{{ item }} / create directories"
+  file:
+    state: directory
+    path: "{{ dir }}"
+  loop:
+    - "{{ dockers_dir }}/{{ item }}"
+  loop_control:
+    loop_var: dir
+
+- name: "{{ item }} / add config"
+  copy:
+    dest: "{{ dockers_dir }}/{{ item }}/glances.conf"
+    content: |
+      [network]
+      show=wlp2s0
+      [diskio]
+      show=sda.*
+      [fs]
+      hide=/etc/glances.conf,/etc/hostname,/etc/resolv.conf,/etc/os-release
+
+- name: "{{ item }} / deploy"
+  docker_container:
+    state: started
+    name: "{{ item }}"
+    image: nicolargo/glances
+    restart_policy: unless-stopped
+    user: "0"
+    networks:
+      - name: host
+    volumes:
+      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro
+      - /etc/os-release:/etc/os-release:ro
+      - "{{ dockers_dir }}/{{ item }}/glances.conf:/etc/glances.conf"
+      - "/mnt/{{ hdd }}:/mnt/{{ hdd }}"
+    labels:
+      homepage.group: "services"
+      homepage.name: "{{ item }}"
+      homepage.icon: "{{ item  }}"
+      homepage.href: "http://{{ item }}.{{ inventory_hostname }}"
+    privileged: true
+    pid_mode: host
+    env:
+      GLANCES_OPT: "-w -C /etc/glances.conf"

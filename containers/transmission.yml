@@ -1,0 +1,114 @@
+- name: "{{ item }} / create directories"
+  file:
+    state: directory
+    path: "{{ dir }}"
+  loop:
+    - "{{ dockers_dir }}/{{ item }}"
+    - "{{ dockers_dir }}/{{ item }}/transmissionic"
+  loop_control:
+    loop_var: dir
+
+- name: "{{ item }} / install packages"
+  apt:
+    name:
+      - python3-pexpect
+      - unzip
+    state: latest
+    update_cache: true
+
+- name: "{{ item }} / download transmissionic"
+  unarchive:
+    remote_src: true
+    src: "https://github.com/6c65726f79/Transmissionic/releases/download/v1.7.1/Transmissionic-webui-v1.7.1.zip"
+    dest: "{{ dockers_dir }}/{{ item }}/transmissionic"
+
+- name: "{{ item }} / add transmissionic config"
+  copy:
+    dest: "{{ dockers_dir }}/{{ item }}/transmissionic/web/default.json"
+    content: |
+      {
+        "colorScheme": "dark",
+        "useBits": false,
+        "compactMode": true
+      }
+
+- name: "{{ item }} / deploy"
+  docker_container:
+    state: started
+    name: "{{ item }}"
+    image: linuxserver/transmission
+    restart_policy: unless-stopped
+    networks: 
+      - name: traefik
+    user: "0"
+    volumes:
+      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro
+      - "/mnt/{{ hdd }}:/downloads"
+      - "{{ dockers_dir }}/{{ item }}/config:/config"
+      - "{{ dockers_dir }}/{{ item }}/watch:/watch"
+      - "{{ dockers_dir }}/{{ item }}/transmissionic/web:/usr/share/transmission/public_html"
+    labels:
+      traefik.enable: "true"
+
+      homepage.group: "widgets"
+      homepage.name: "{{ item }}"
+      homepage.icon: "{{ item }}"
+      homepage.href: "http://{{ item }}.{{ inventory_hostname }}"
+      homepage.widget.url: "http://{{ item }}:9091"
+      homepage.widget.type: "transmission"
+      homepage.widget.fields: '["download", "upload"]'
+    env:
+      WHITELIST: "*"
+      HOST_WHITELIST: "*"
+
+- name: "{{ item }} / process config"
+  vars:
+    changes:
+      - { key: "download-dir", value: "\"/downloads/\"" }
+      - { key: "incomplete-dir-enabled", value: "false" }
+      - { key: "trash-original-torrent-files", value: "true" }
+
+  block:
+    - name: "{{ item }} / check config"
+      register: transmission_config
+      check_mode: true
+      replace:
+        path: "{{ dockers_dir }}/{{ item }}/config/settings.json"
+        regexp: '"{{ field.key }}": .*,'
+        replace: '"{{ field.key }}": {{ field.value }},'
+      loop: "{{ changes }}"
+      loop_control:
+        loop_var: field
+
+    - name: "{{ item }} / stop"
+      when: transmission_config.changed
+      docker_container:
+        state: stopped
+        name: "{{ item }}"
+
+    - name: "{{ item }} / change config"
+      when: transmission_config.changed
+      replace:
+        path: "{{ dockers_dir }}/{{ item }}/config/settings.json"
+        regexp: '"{{ field.key }}": .*,'
+        replace: '"{{ field.key }}": {{ field.value }},'
+      loop: "{{ changes }}"
+      loop_control:
+        loop_var: field
+
+    - name: "{{ item }} / start"
+      when: transmission_config.changed
+      docker_container:
+        state: started
+        name: "{{ item }}"
+
+- name: "{{ item }} / remove weird dirs"
+  file:
+    path: "/mnt/{{ hdd }}/{{ weird_dir }}"
+    state: absent
+  loop:
+    - complete
+    - incomplete
+  loop_control:
+    loop_var: weird_dir

@@ -4,7 +4,7 @@
 
 ### Requirements:
 - Ansible
-- Debian 12 (without setted root password)
+- Debian 12 (without setting root password)
 - Melted brain
 
 ### How to run:

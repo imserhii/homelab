@@ -4,6 +4,7 @@
     path: "{{ dir }}"
   loop:
     - "{{ dockers_dir }}/{{ item }}"
+    - "{{ dockers_dir }}/{{ item }}/certs"
   loop_control:
     loop_var: dir
 
@@ -14,11 +15,27 @@
     driver: bridge
     internal: no
 
+- name: "{{ item }} / add certs"
+  register: traefik_certs
+  copy:
+    src: "{{ pem }}.pem"
+    dest: "{{ dockers_dir }}/{{ item }}/certs/{{ pem }}.pem"
+  loop:
+    - cert
+    - key
+  loop_control:
+    loop_var: pem 
+
 - name: "{{ item }} / add config"
   register: traefik_config
   copy:
     dest: "{{ dockers_dir }}/{{ item }}/traefik.yml"
     content: |
+      entryPoints:
+        http:
+          address: ":80"
+        https:
+          address: ":443"
       api:
         dashboard: true
       serversTransport:
@@ -36,6 +53,11 @@
   copy:
     dest: "{{ dockers_dir }}/{{ item }}/file_provider.yml"
     content: |
+      tls:
+        certificates:
+          - certFile: /etc/traefik/certs/cert.pem
+            keyFile: /etc/traefik/certs/key.pem
+
       http:
         routers:
           homebridge:
@@ -44,6 +66,16 @@
           glances:
             rule: Host(`glances.{{ inventory_hostname }}`)
             service: glances
+          node-red:
+            rule: Host(`node-red.{{ inventory_hostname }}`)
+            service: node-red
+          mainsail:
+            rule: Host(`mainsail.{{ inventory_hostname }}`)
+            service: mainsail
+            tls: true
+            middlewares:
+              - turn-on-printer
+
         services:
           homebridge:
             loadBalancer:
@@ -53,6 +85,19 @@
             loadBalancer:
               servers:
                 - url: http://{{ inventory_hostname }}:61208
+          node-red:
+            loadBalancer:
+              servers:
+                - url: http://{{ inventory_hostname }}:1880
+          mainsail:
+            loadBalancer:
+              servers:
+                - url: http://{{ PRINTER_IP }}
+
+        middlewares:
+          turn-on-printer:
+            forwardAuth:
+              address: http://node-red.{{ inventory_hostname }}/printer?state=on
 
 - name: "{{ item }} / deploy"
   docker_container:

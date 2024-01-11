@@ -7,7 +7,7 @@
     suites: "{{ ansible_distribution_release }}"
     components: stable
 
-- name: "{{ item }} / install packages"
+- name: "{{ item }} / install"
   apt:
     name:
       - docker-ce

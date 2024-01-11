@@ -16,7 +16,7 @@
       [diskio]
       show=sda.*
       [fs]
-      hide=/etc/glances.conf,/etc/hostname,/etc/resolv.conf,/etc/os-release
+      hide=/etc/glances.conf,/etc/hostname,/etc/resolv.conf,/etc/os-release,/etc/localtime,/etc/timezone
 
 - name: "{{ item }} / deploy"
   docker_container:
@@ -31,8 +31,9 @@
       - /etc/timezone:/etc/timezone:ro
       - /etc/localtime:/etc/localtime:ro
       - /etc/os-release:/etc/os-release:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
       - "{{ dockers_dir }}/{{ item }}/glances.conf:/etc/glances.conf"
-      - "/mnt/{{ hdd }}:/mnt/{{ hdd }}"
+      - "/mnt/sdb:/mnt/sdb"
     labels:
       homepage.group: "services"
       homepage.name: "{{ item }}"

@@ -7,12 +7,25 @@
   loop_control:
     loop_var: dir
 
+- name: "{{ item }} / add config"
+  register: gitea_config
+  community.general.ini_file:
+    path: "{{ dockers_dir }}/{{ item }}/gitea/conf/app.ini"
+    section: "{{ ini_item.section }}"
+    option: "{{ ini_item.option }}"
+    value: "{{ ini_item.value }}"
+  loop:
+    - { section: security, option: MIN_PASSWORD_LENGTH, value: 4 }
+  loop_control:
+    loop_var: ini_item
+
 - name: "{{ item }} / deploy"
   docker_container:
     state: started
     name: "{{ item }}"
     image: gitea/gitea:latest
     restart_policy: unless-stopped
+    restart: "{{ gitea_config.changed | default(false) }}"
     networks:
       - name: traefik
     user: "0"
@@ -28,3 +41,43 @@
       homepage.name: "{{ item }}"
       homepage.icon: "{{ item }}"
       homepage.href: "http://{{ item }}.{{ inventory_hostname }}"
+
+- name: "{{ item }} / add registry to docker"
+  register: gitea_registry
+  copy:
+    dest: /etc/docker/daemon.json
+    content: |
+      {
+        "insecure-registries" : ["{{ item }}.{{ inventory_hostname }}"]
+      }
+
+- name: "{{ item }} / restart docker"
+  when: gitea_registry.changed
+  service:
+    name: docker
+    enabled: true
+    state: restarted
+
+- name: "{{ item }} / ask for the runner token"
+  register: GITEA_RUNNER_REGISTRATION_TOKEN
+  pause:
+    prompt: GITEA_RUNNER_REGISTRATION_TOKEN
+
+- name: "{{ item }} / add the runner"
+  when: GITEA_RUNNER_REGISTRATION_TOKEN.user_input
+  docker_container:
+    state: started
+    name: "{{ item }}-runner"
+    image: gitea/act_runner
+    restart_policy: unless-stopped
+    networks:
+      - name: traefik
+    user: "0"
+    volumes:
+      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro
+      - /var/run/docker.sock:/var/run/docker.sock
+    env:
+      GITEA_RUNNER_NAME: "runner"
+      GITEA_INSTANCE_URL: "http://{{ item }}.{{ inventory_hostname }}"
+      GITEA_RUNNER_REGISTRATION_TOKEN: "{{ GITEA_RUNNER_REGISTRATION_TOKEN.user_input }}"

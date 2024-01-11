@@ -11,19 +11,18 @@
   docker_container:
     state: started
     name: "{{ item }}"
-    image: nodered/node-red
+    image: influxdb:latest
     restart_policy: unless-stopped
     networks: 
-      - name: host
-    dns_servers:
-      - "172.17.0.1"
-      - "8.8.8.8"
+      - name: traefik
     user: "0"
     volumes:
       - /etc/timezone:/etc/timezone:ro
       - /etc/localtime:/etc/localtime:ro
-      - "{{ dockers_dir }}/{{ item }}:/data"
+      - "{{ dockers_dir }}/{{ item }}:/root/.influxdb2"
     labels:
+      traefik.enable: "true"
+
       homepage.group: "services"
       homepage.name: "{{ item }}"
       homepage.icon: "{{ item }}"

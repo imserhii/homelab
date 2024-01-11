@@ -8,10 +8,8 @@
 - Melted brain
 
 ### How to run:
-1. Add **creds.yml** with your `USER` and `PASSWORD`
+1. Add **secrets.yml** with **USER** and **PASSWORD** (and **PRINTER_IP** for Klipper)
 2. Modify the hostname and IP in **inventory.cfg**
-3. `ansible-playbook run.yml`
-4. Add the machine as a DNS server to your router
-5. → [home.lab](http://home.lab)
-
-> P.S. Yeah, I don't care about HTTPS and "0". Only VPN, and only hardcore!
+3. Add the machine as DNS to your router
+4. `mkcert -cert-file cert.pem -key-file key.pem "*.home.lab" home.lab`
+5. `ansible-playbook run.yml` → [home.lab](http://home.lab)

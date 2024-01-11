@@ -1,10 +1,25 @@
-- name: "{{ item }} / install packages"
+- name: "{{ item }} / install samba and expect"
   apt:
     name:
-      - python3-pexpect
       - samba
+      - python3-pexpect
     state: latest
     update_cache: true
+
+- name: "{{ item }} / mount"
+  mount:
+    src: UUID=488910d0-7283-4641-a814-7ddda3f65601
+    path: /mnt/sdb
+    fstype: ext4
+    state: mounted
+
+- name: "{{ item }} / change rights"
+  file:
+    dest: /mnt/sdb
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: 0777
+    recurse: true
 
 - name: "{{ item }} / enable"
   service:
@@ -26,7 +41,7 @@
         aio write size = 16384
 
       [downloads]
-        path=/mnt/{{ hdd }}
+        path=/mnt/sdb
         read only=no
         guest ok=no
         valid users={{ ansible_user }}

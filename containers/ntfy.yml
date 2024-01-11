@@ -8,28 +8,28 @@
     loop_var: dir
 
 - name: "{{ item }} / add config"
-  register: dnsmasq_config
+  register: ntfy_config
   copy:
-    dest: "{{ dockers_dir }}/{{ item }}/dnsmasq.conf"
+    dest: "{{ dockers_dir }}/{{ item }}/server.yml"
     content: |
-      no-resolv
-      address=/{{ inventory_hostname }}/{{ ansible_default_ipv4.address }}
+      upstream-base-url: "https://ntfy.sh"
+      base-url: "http://{{ item }}.{{ inventory_hostname }}"
+      behind-proxy: true
 
 - name: "{{ item }} / deploy"
   docker_container:
     state: started
     name: "{{ item }}"
-    image: strm/dnsmasq
+    image: binwiederhier/ntfy
     restart_policy: unless-stopped
-    restart: "{{ dnsmasq_config.changed | default(false) }}"
+    restart: "{{ ntfy_config.changed | default(false) }}"
+    networks: 
+      - name: traefik
     user: "0"
+    command: serve
     volumes:
       - /etc/timezone:/etc/timezone:ro
       - /etc/localtime:/etc/localtime:ro
-      - "{{ dockers_dir }}/{{ item }}/dnsmasq.conf:/etc/dnsmasq.conf"
-    ports:
-      - "53:53/tcp"
-      - "53:53/udp"
-    entrypoint:
-      - dnsmasq
-      - "-d"
+      - "{{ dockers_dir }}/{{ item }}:/etc/ntfy"
+    labels:
+      traefik.enable: "true"

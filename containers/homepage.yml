@@ -39,10 +39,24 @@
           text_size: xl
           text: :~)
 
+      - search:
+          provider: custom
+          url: q=
+
 - name: "{{ item }} / add services.yaml"
   copy:
     dest: "{{ dockers_dir }}/{{ item }}/services.yaml"
-    content: ""
+    content: |
+        - widgets:
+          - mainsail:
+              weight: 100
+              icon: mainsail.svg
+              href: https://mainsail.{{ inventory_hostname }}
+              widget:
+                type: moonraker
+                url: http://{{ PRINTER_IP }}:7125
+                fields: ["print_status", "print_progress"]
+                hideErrors: true
 
 - name: "{{ item }} / add bookmarks.yaml"
   copy:
@@ -56,6 +70,88 @@
       #footer {
         display: none;
       }
+
+      #information-widgets {
+        margin-top: 1.5rem
+      }
+
+      #information-widgets .information-widget-search {
+        margin-left: 0.25rem;
+        margin-right: 0.25rem;
+      }
+
+      #information-widgets-right {
+        margin-left: 0;
+      }
+
+      #information-widgets .information-widget-search > .flex-col {
+        margin-top: 0;
+        margin-bottom: 0;
+        height: 2.5rem;
+      }
+
+      #information-widgets .information-widget-search > .flex-col > .text-left {
+        display: none;
+      }
+
+      #information-widgets .information-widget-search > .flex-col > input {
+        font-family: arial;
+        font-size: .875rem
+      }
+
+      #information-widgets .information-widget-search > .flex-col > input::placeholder {
+        color: hsla(0,0%,100%,.4)
+      }
+
+      .services-group:first-child .service:last-child > div {
+        margin-bottom: 0.25rem;
+      }
+
+- name: "{{ item }} / add custom.js"
+  copy:
+    dest: "{{ dockers_dir }}/{{ item }}/custom.js"
+    content: |
+      let searchpageIframe;
+
+      const addIframe = (q) => {
+        searchpageIframe = document.createElement("iframe");
+
+        searchpageIframe.width = "100%";
+        searchpageIframe.height = "100%";
+        searchpageIframe.src = "http://searchpage.{{ inventory_hostname }}/?iframe=true&" + q;
+        searchpageIframe.style.border = "none";
+        searchpageIframe.style.position = "fixed";
+        searchpageIframe.style.top = "0";
+        searchpageIframe.style.backgroundColor = "rgb(31,41,55)"
+        searchpageIframe.style.left = "0";
+
+        document.body.appendChild(searchpageIframe);
+      };
+
+      const removeIframe = () => {
+        document.body.removeChild(searchpageIframe);
+      };
+
+      window.addEventListener("message", (event) => {
+        if (event.data.type == "close") {
+          removeIframe();
+        }
+      }, false);
+
+      const originalOpen = window.open;
+
+      window.open = (link) => {
+        const tmp = document.createElement("input");
+        document.body.appendChild(tmp);
+        tmp.focus();
+        document.body.removeChild(tmp);
+
+        if (link.includes('q=')) {
+          addIframe(link);
+        } else {
+          originalOpen(link);
+        }
+      };
 
 - name: "{{ item }} / deploy"
   docker_container:

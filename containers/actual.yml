@@ -1,0 +1,52 @@
+- name: "{{ item }} / create directories"
+  file:
+    state: directory
+    path: "{{ dir }}"
+  loop:
+    - "{{ dockers_dir }}/{{ item }}"
+    - "{{ dockers_dir }}/{{ item }}-api"
+  loop_control:
+    loop_var: dir
+
+- name: "{{ item }} / deploy api"
+  docker_container:
+    state: started
+    name: "{{ item }}-api"
+    image: jhonderson/actual-http-api:latest
+    restart_policy: unless-stopped
+    networks: 
+      - name: traefik
+    user: "0"
+    volumes:
+      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro
+      - "{{ dockers_dir }}/{{ item }}-api:/data"
+    labels:
+      traefik.enable: "true"
+    env:
+      ACTUAL_SERVER_URL: "http://{{ item }}:5006"
+      ACTUAL_SERVER_PASSWORD: "{{ PASSWORD }}"
+      API_KEY: "{{ item }}"
+
+- name: "{{ item }} / deploy"
+  docker_container:
+    state: started
+    name: "{{ item }}"
+    image: actualbudget/actual-server:latest
+    restart_policy: unless-stopped
+    networks: 
+      - name: traefik
+    user: "0"
+    volumes:
+      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro
+      - "{{ dockers_dir }}/traefik/certs:/certs:ro"
+      - "{{ dockers_dir }}/{{ item }}:/data"
+    labels:
+      traefik.enable: "true"
+      traefik.http.routers.actual.tls: "true"
+
+      homepage.group: "services"
+      homepage.name: "{{ item }}"
+      homepage.icon: "{{ item }}"
+      homepage.href: "https://{{ item }}.{{ inventory_hostname }}"

@@ -5,14 +5,15 @@
   loop:
     - "{{ dockers_dir }}/{{ item }}"
     - "{{ dockers_dir }}/{{ item }}/transmissionic"
+    - "{{ dockers_dir }}/{{ item }}/notifiers"
   loop_control:
     loop_var: dir
 
 - name: "{{ item }} / install packages"
   apt:
     name:
-      - python3-pexpect
       - unzip
+      - curl
     state: latest
     update_cache: true
 
@@ -32,6 +33,36 @@
         "compactMode": true
       }
 
+- name: "{{ item }} / add transmissionic config"
+  copy:
+    dest: "{{ dockers_dir }}/{{ item }}/transmissionic/web/default.json"
+    content: |
+      {
+        "colorScheme": "dark",
+        "useBits": false,
+        "compactMode": true
+      }
+
+- name: "{{ item }} / add notifiers"
+  copy:
+    dest: "{{ dockers_dir }}/{{ item }}/notifiers/{{ notifier.script }}.sh"
+    mode: a+x
+    content: |
+      #!/bin/sh
+
+      curl ntfy.{{ inventory_hostname }} \
+        -d "{
+          \"topic\": \"{{ item }}\",
+          \"title\": \"{{ item }}\",
+          \"message\": \"{{ notifier.message }}\",
+          \"click\": \"http://{{ item }}.{{ inventory_hostname }}\"
+        }"
+  loop:
+    - { script: "torrent-added", message: "🆕 ${TR_TORRENT_NAME}" }
+    - { script: "torrent-done", message: "✅ ${TR_TORRENT_NAME}" }
+  loop_control:
+    loop_var: notifier
+  
 - name: "{{ item }} / deploy"
   docker_container:
     state: started
@@ -44,10 +75,11 @@
     volumes:
       - /etc/timezone:/etc/timezone:ro
       - /etc/localtime:/etc/localtime:ro
-      - "/mnt/{{ hdd }}:/downloads"
+      - "/mnt/sdb:/downloads"
       - "{{ dockers_dir }}/{{ item }}/config:/config"
       - "{{ dockers_dir }}/{{ item }}/watch:/watch"
       - "{{ dockers_dir }}/{{ item }}/transmissionic/web:/usr/share/transmission/public_html"
+      - "{{ dockers_dir }}/{{ item }}/notifiers:/notifiers"
     labels:
       traefik.enable: "true"
 
@@ -68,6 +100,10 @@
       - { key: "download-dir", value: "\"/downloads/\"" }
       - { key: "incomplete-dir-enabled", value: "false" }
       - { key: "trash-original-torrent-files", value: "true" }
+      - { key: "script-torrent-added-enabled", value: "true" }
+      - { key: "script-torrent-added-filename", value: "\"/notifiers/torrent-added.sh\"" }
+      - { key: "script-torrent-done-enabled", value: "true" }
+      - { key: "script-torrent-done-filename", value: "\"/notifiers/torrent-done.sh\"" }
 
   block:
     - name: "{{ item }} / check config"
@@ -105,7 +141,7 @@
 
 - name: "{{ item }} / remove weird dirs"
   file:
-    path: "/mnt/{{ hdd }}/{{ weird_dir }}"
+    path: "/mnt/sdb/{{ weird_dir }}"
     state: absent
   loop:
     - complete

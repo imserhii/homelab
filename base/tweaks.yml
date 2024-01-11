@@ -4,3 +4,9 @@
     state: touch
     modification_time: preserve
     access_time: preserve
+
+- name: "{{ item }} / passwordless sudo"
+  copy:
+    content: "{{ ansible_user }} ALL=(ALL:ALL) NOPASSWD:ALL"
+    dest: /etc/sudoers.d/passwordless
+    mode: 0440

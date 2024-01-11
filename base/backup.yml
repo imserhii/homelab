@@ -1,0 +1,40 @@
+- name: "{{ item }} / install packages"
+  apt:
+    name:
+      - zip
+      - rsync
+    state: latest
+    update_cache: true
+
+- name: "{{ item }} / mount flash drive"
+  mount:
+    src: UUID=ce8aaf0e-3abc-49ee-aa22-204ce5735917
+    path: /mnt/sdc
+    fstype: ext4
+    state: mounted
+
+- name: "{{ item }} / add rsync config"
+  copy:
+    dest: /home/{{ ansible_user }}/.backup-config
+    content: |
+      - .esphome
+      - .npm
+      - node_modules
+      - transmission/transmissionic/web
+
+- name: "{{ item }} / add backup script"
+  copy:
+    dest: /home/{{ ansible_user }}/.backup.sh
+    mode: a+x
+    content: |
+      #!/bin/sh
+      rsync -rvzh --include-from=/home/{{ ansible_user }}/.backup-config /home/{{ ansible_user }}/dockers/ /mnt/sdc/backup/
+      zip -r /mnt/sdc/backup-`date +%d-%m-%Y`.zip /mnt/sdc/backup/
+      rm -rf /mnt/sdc/backup/
+
+- name: "{{ item }} / add every monday cronjob"
+  cron:
+    name: backup
+    minute: 0
+    hour: 0
+    job: "/home/{{ ansible_user }}/.backup.sh"

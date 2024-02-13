@@ -1,4 +1,4 @@
-- name: "{{ item }} / install samba and expect"
+- name: "{{ item }} / install deps"
   apt:
     name:
       - samba

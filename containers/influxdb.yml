@@ -19,7 +19,7 @@
     volumes:
       - /etc/timezone:/etc/timezone:ro
       - /etc/localtime:/etc/localtime:ro
-      - "{{ dockers_dir }}/{{ item }}:/root/.influxdb2"
+      - "{{ dockers_dir }}/{{ item }}:/var/lib/influxdb2"
     labels:
       traefik.enable: "true"
 

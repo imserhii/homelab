@@ -30,6 +30,10 @@
       homepage.icon: "{{ item }}"
       homepage.href: "http://{{ item }}.{{ inventory_hostname }}"
 
+- name: "{{ item }} / wait for config"
+  wait_for:
+    path: "{{ dockers_dir }}/{{ item }}/Jackett/ServerConfig.json"
+
 - name: "{{ item }} / change config"
   register: jackett_config
   replace:

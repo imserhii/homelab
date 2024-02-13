@@ -8,8 +8,14 @@
 - Melted brain
 
 ### How to run:
-1. Add **secrets.yml** with **USER** and **PASSWORD** (and **PRINTER_IP** for Klipper)
-2. Modify the hostname and IP in **inventory.cfg**
-3. Add the machine as DNS to your router
-4. `mkcert -cert-file cert.pem -key-file key.pem "*.home.lab" home.lab`
-5. `ansible-playbook run.yml` → [home.lab](http://home.lab)
+1. Add **secrets.yml** with:
+    - *USERNAME*
+    - *PASSWORD*
+    - *HOST_IP*
+    - *MAINSAIL_IP*
+    - *GITEA_RUNNER_TOKEN*
+    - *INFLUXDB_TOKEN*
+    - *NTFY_URL*
+2. Add the machine as DNS to your router
+3. `mkcert -cert-file cert.pem -key-file key.pem "*.home.lab" home.lab`
+4. `ansible-playbook run.yml` → [home.lab](http://home.lab)

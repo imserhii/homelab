@@ -51,10 +51,10 @@
           - mainsail:
               weight: 100
               icon: mainsail.svg
-              href: https://mainsail.{{ inventory_hostname }}
+              href: http://mainsail.{{ inventory_hostname }}
               widget:
                 type: moonraker
-                url: http://{{ PRINTER_IP }}:7125
+                url: http://{{ MAINSAIL_IP }}:7125
                 fields: ["print_status", "print_progress"]
                 hideErrors: true
 

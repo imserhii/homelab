@@ -1,0 +1,52 @@
+- name: "{{ item }} / create directories"
+  file:
+    state: directory
+    path: "{{ dir }}"
+  loop:
+    - "{{ dockers_dir }}/{{ item }}"
+  loop_control:
+    loop_var: dir
+
+- name: "{{ item }} / add config"
+  register: telegraf_config
+  when: INFLUXDB_TOKEN
+  copy:
+    dest: "{{ dockers_dir }}/{{ item }}/telegraf.conf"
+    content: |
+      [[inputs.mqtt_consumer]]
+
+      servers = ["tcp://{{ inventory_hostname }}:1883"]
+      username = "{{ ansible_user }}"
+      password = "{{ ansible_ssh_pass }}" 
+
+      data_format = "value"
+      data_type = "string"
+
+      topics = [
+        "zigbee2mqtt/+"
+      ]      
+
+      [[outputs.influxdb_v2]]
+      urls = ["http://influxdb.{{ inventory_hostname }}"]
+      token = "{{ INFLUXDB_TOKEN }}"
+      organization = "{{ inventory_hostname }}"
+      bucket = "zigbee2mqtt"
+      insecure_skip_verify = true
+
+- name: "{{ item }} / deploy"
+  when: INFLUXDB_TOKEN
+  docker_container:
+    state: started
+    name: "{{ item }}"
+    image: telegraf:latest
+    restart_policy: unless-stopped
+    restart: "{{ telegraf_config.changed | default(false) }}"
+    networks: 
+      - name: traefik
+    user: "0"
+    volumes:
+      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro
+      - "{{ dockers_dir }}/{{ item }}/telegraf.conf:/etc/telegraf/telegraf.conf:ro"
+    labels:
+      traefik.enable: "true"

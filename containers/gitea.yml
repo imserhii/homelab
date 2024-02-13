@@ -58,13 +58,8 @@
     enabled: true
     state: restarted
 
-- name: "{{ item }} / ask for the runner token"
-  register: GITEA_RUNNER_REGISTRATION_TOKEN
-  pause:
-    prompt: GITEA_RUNNER_REGISTRATION_TOKEN
-
 - name: "{{ item }} / add the runner"
-  when: GITEA_RUNNER_REGISTRATION_TOKEN.user_input
+  when: GITEA_RUNNER_TOKEN
   docker_container:
     state: started
     name: "{{ item }}-runner"
@@ -80,4 +75,4 @@
     env:
       GITEA_RUNNER_NAME: "runner"
       GITEA_INSTANCE_URL: "http://{{ item }}.{{ inventory_hostname }}"
-      GITEA_RUNNER_REGISTRATION_TOKEN: "{{ GITEA_RUNNER_REGISTRATION_TOKEN.user_input }}"
+      GITEA_RUNNER_REGISTRATION_TOKEN: "{{ GITEA_RUNNER_TOKEN }}"

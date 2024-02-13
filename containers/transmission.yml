@@ -50,9 +50,9 @@
     content: |
       #!/bin/sh
 
-      curl ntfy.{{ inventory_hostname }} \
+      curl {{ NTFY_URL }} \
         -d "{
-          \"topic\": \"{{ item }}\",
+          \"topic\": \"notifications\",
           \"title\": \"{{ item }}\",
           \"message\": \"{{ notifier.message }}\",
           \"click\": \"http://{{ item }}.{{ inventory_hostname }}\"
@@ -93,6 +93,10 @@
     env:
       WHITELIST: "*"
       HOST_WHITELIST: "*"
+
+- name: "{{ item }} / wait for config"
+  wait_for:
+    path: "{{ dockers_dir }}/{{ item }}/config/settings.json"
 
 - name: "{{ item }} / process config"
   vars:

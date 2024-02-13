@@ -19,7 +19,6 @@
       loop:
         - dnsmasq
         - traefik
-        - ntfy
         - homepage
         - glances
         - transmission
@@ -31,5 +30,6 @@
         - jackett
         - grafana
         - influxdb
+        - telegraf
         - gitea
         - actual

@@ -1,12 +1,13 @@
-- hosts: all
+---
+- name: run
+  hosts: all
 
   vars_files:
     - secrets.yml
-    
-  tasks:
 
+  tasks:
     - name: do base
-      include_tasks: "base/{{ item }}.yml"
+      include_tasks: base/{{ item }}.yml
       loop:
         - tweaks
         - zsh
@@ -15,21 +16,23 @@
         - backup
 
     - name: deploy containers
-      include_tasks: "containers/{{ item }}.yml"
+      include_tasks: containers/{{ item }}.yml
       loop:
-        - dnsmasq
         - traefik
+        - dnsmasq
         - homepage
+        - home-assistant
         - glances
+        - dozzle
         - transmission
         - mosquitto
         - zigbee2mqtt
-        - homebridge
         - node-red
         - esphome
         - jackett
         - grafana
         - influxdb
         - telegraf
+        - redis
         - gitea
         - actual

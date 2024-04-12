@@ -1,3 +1,4 @@
+---
 - name: "{{ item }} / create directories"
   file:
     state: directory
@@ -13,25 +14,31 @@
   copy:
     dest: "{{ dockers_dir }}/{{ item }}/telegraf.conf"
     content: |
+      [agent]
+        debug = true
+
       [[inputs.mqtt_consumer]]
 
-      servers = ["tcp://{{ inventory_hostname }}:1883"]
-      username = "{{ ansible_user }}"
-      password = "{{ ansible_ssh_pass }}" 
+        servers = ["tcp://{{ inventory_hostname }}:1883"]
+        username = "{{ ansible_user }}"
+        password = "{{ ansible_ssh_pass }}"
 
-      data_format = "value"
-      data_type = "string"
+        data_format = "value"
+        data_type = "string"
 
-      topics = [
-        "zigbee2mqtt/+"
-      ]      
+        topics = [
+          "zigbee2mqtt/+"
+        ]
 
       [[outputs.influxdb_v2]]
-      urls = ["http://influxdb.{{ inventory_hostname }}"]
-      token = "{{ INFLUXDB_TOKEN }}"
-      organization = "{{ inventory_hostname }}"
-      bucket = "zigbee2mqtt"
-      insecure_skip_verify = true
+        urls = ["http://influxdb:8086"]
+        token = "{{ INFLUXDB_TOKEN }}"
+        organization = "{{ inventory_hostname }}"
+        bucket = "zigbee2mqtt"
+        insecure_skip_verify = true
+
+      # [[outputs.redistimeseries]]
+      #   address = "{{ HOST_IP }}:6379"
 
 - name: "{{ item }} / deploy"
   when: INFLUXDB_TOKEN
@@ -41,7 +48,7 @@
     image: telegraf:latest
     restart_policy: unless-stopped
     restart: "{{ telegraf_config.changed | default(false) }}"
-    networks: 
+    networks:
       - name: traefik
     user: "0"
     volumes:

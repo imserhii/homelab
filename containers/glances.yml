@@ -1,3 +1,4 @@
+---
 - name: "{{ item }} / create directories"
   file:
     state: directory
@@ -8,22 +9,30 @@
     loop_var: dir
 
 - name: "{{ item }} / add config"
+  register: glances_config
   copy:
     dest: "{{ dockers_dir }}/{{ item }}/glances.conf"
     content: |
       [network]
       show=wlp2s0
       [diskio]
-      show=sda.*
+      disable=true
+      [sensors]
+      disable=true
+      [connections]
+      disable=true
+      [now]
+      disable=true
       [fs]
       hide=/etc/glances.conf,/etc/hostname,/etc/resolv.conf,/etc/os-release,/etc/localtime,/etc/timezone
 
 - name: "{{ item }} / deploy"
   docker_container:
-    state: started
     name: "{{ item }}"
+    state: started
     image: nicolargo/glances
     restart_policy: unless-stopped
+    restart: "{{ glances_config.changed | default(false) }}"
     user: "0"
     networks:
       - name: host
@@ -31,15 +40,16 @@
       - /etc/timezone:/etc/timezone:ro
       - /etc/localtime:/etc/localtime:ro
       - /etc/os-release:/etc/os-release:ro
-      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /mnt/sdb:/mnt/sdb
       - "{{ dockers_dir }}/{{ item }}/glances.conf:/etc/glances.conf"
-      - "/mnt/sdb:/mnt/sdb"
     labels:
-      homepage.group: "services"
+      homepage.group: widgets
+      homepage.weight: "20"
       homepage.name: "{{ item }}"
       homepage.icon: "{{ item  }}"
-      homepage.href: "http://{{ item }}.{{ inventory_hostname }}"
+      homepage.href: http://{{ item }}.{{ inventory_hostname }}
+
     privileged: true
     pid_mode: host
     env:
-      GLANCES_OPT: "-w -C /etc/glances.conf"
+      GLANCES_OPT: -w -C /etc/glances.conf

@@ -1,3 +1,4 @@
+---
 - name: "{{ item }} / create directories"
   file:
     state: directory
@@ -37,8 +38,8 @@
       - "{{ dockers_dir }}/{{ item }}/log:/mosquitto/log"
       - "{{ dockers_dir }}/{{ item }}/data:/mosquitto/data"
     ports:
-      - "1883:1883"
-      - "9001:9001"
+      - 1883:1883
+      - 9001:9001
 
 - name: "{{ item }} / add user"
   when: mosquitto_password_file.changed

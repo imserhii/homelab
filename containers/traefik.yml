@@ -1,3 +1,4 @@
+---
 - name: "{{ item }} / create directories"
   file:
     state: directory
@@ -13,7 +14,7 @@
     name: traefik
     state: present
     driver: bridge
-    internal: no
+    internal: false
 
 - name: "{{ item }} / add certs"
   register: traefik_certs
@@ -24,7 +25,7 @@
     - cert
     - key
   loop_control:
-    loop_var: pem 
+    loop_var: pem
 
 - name: "{{ item }} / add config"
   register: traefik_config
@@ -34,10 +35,25 @@
       entryPoints:
         http:
           address: ":80"
+          forwardedHeaders:
+            insecure: true
         https:
           address: ":443"
+          forwardedHeaders:
+            insecure: true
+      experimental:
+        plugins:
+          traefik-wol:
+            moduleName: github.com/MarkusJx/traefik-wol
+            version: v0.1.1
       api:
         dashboard: true
+      log:
+        level: DEBUG
+      # accessLog:
+      #   fields:
+      #     headers:
+      #       defaultMode: keep
       serversTransport:
         insecureSkipVerify: true
       providers:
@@ -67,8 +83,11 @@
             rule: Host(`glances.{{ inventory_hostname }}`)
             service: glances
           node-red:
-            rule: Host(`node-red.{{ inventory_hostname }}`)
+            rule: Host(`node-red.{{ inventory_hostname }}`) || Host(`api.{{ inventory_hostname }}`)
             service: node-red
+          redis:
+            rule: Host(`redis.{{ inventory_hostname }}`)
+            service: redis
           mainsail:
             rule: Host(`mainsail.{{ inventory_hostname }}`)
             service: mainsail
@@ -88,6 +107,10 @@
             loadBalancer:
               servers:
                 - url: http://{{ inventory_hostname }}:1880
+          redis:
+            loadBalancer:
+              servers:
+                - url: http://{{ inventory_hostname }}:8001
           mainsail:
             loadBalancer:
               servers:
@@ -95,13 +118,15 @@
 
         middlewares:
           turn-on-printer:
-            forwardAuth:
-              address: http://node-red.{{ inventory_hostname }}/api/printer-on
+            plugin:
+              traefik-wol:
+                healthCheck: http://{{ MAINSAIL_IP }}/printer/info
+                startUrl: http://api.home.lab/events?topic=printer/turn-on
 
 - name: "{{ item }} / deploy"
   docker_container:
-    state: started
     name: "{{ item }}"
+    state: started
     image: traefik
     restart_policy: unless-stopped
     restart: "{{ traefik_config.changed | default(false) or traefik_file_provider.changed | default(false) }}"
@@ -115,12 +140,12 @@
       - "{{ dockers_dir }}/{{ item }}/:/etc/traefik"
     labels:
       traefik.enable: "true"
-      traefik.http.routers.dashboard.service: "api@internal"
+      traefik.http.routers.dashboard.service: api@internal
 
-      homepage.group: "services"
+      homepage.group: services
       homepage.name: "{{ item }}"
       homepage.icon: "{{ item }}"
-      homepage.href: "http://{{ item }}.{{ inventory_hostname }}"
+      homepage.href: http://{{ item }}.{{ inventory_hostname }}
     ports:
       - 80:80
       - 443:443

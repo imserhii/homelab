@@ -1,0 +1,7 @@
+{
+  "files.associations": {
+    "*.yml": "ansible"
+  },
+  "editor.tabSize": 2,
+  "ansible.python.interpreterPath": "/opt/homebrew/bin/python3.12"
+}

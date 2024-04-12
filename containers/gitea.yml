@@ -1,9 +1,12 @@
+---
 - name: "{{ item }} / create directories"
   file:
     state: directory
     path: "{{ dir }}"
   loop:
     - "{{ dockers_dir }}/{{ item }}"
+    - "{{ dockers_dir }}/{{ item }}-runner"
+    - "{{ dockers_dir }}/{{ item }}-runner/data"
   loop_control:
     loop_var: dir
 
@@ -21,8 +24,9 @@
 
 - name: "{{ item }} / deploy"
   docker_container:
-    state: started
     name: "{{ item }}"
+    state: started
+    pull: true
     image: gitea/gitea:latest
     restart_policy: unless-stopped
     restart: "{{ gitea_config.changed | default(false) }}"
@@ -37,10 +41,10 @@
       traefik.enable: "true"
       traefik.http.services.gitea.loadBalancer.server.port: "3000"
 
-      homepage.group: "services"
+      homepage.group: services
       homepage.name: "{{ item }}"
       homepage.icon: "{{ item }}"
-      homepage.href: "http://{{ item }}.{{ inventory_hostname }}"
+      homepage.href: http://{{ item }}.{{ inventory_hostname }}
 
 - name: "{{ item }} / add registry to docker"
   register: gitea_registry
@@ -58,13 +62,22 @@
     enabled: true
     state: restarted
 
+- name: "{{ item }} / add runner config"
+  register: gitea_runner_config
+  copy:
+    dest: "{{ dockers_dir }}/{{ item }}-runner/config.yaml"
+    content: |
+      runner:
+        fetch_interval: 30s
+
 - name: "{{ item }} / add the runner"
   when: GITEA_RUNNER_TOKEN
   docker_container:
-    state: started
     name: "{{ item }}-runner"
+    state: started
     image: gitea/act_runner
     restart_policy: unless-stopped
+    restart: "{{ gitea_runner_config.changed | default(false) }}"
     networks:
       - name: traefik
     user: "0"
@@ -72,7 +85,10 @@
       - /etc/timezone:/etc/timezone:ro
       - /etc/localtime:/etc/localtime:ro
       - /var/run/docker.sock:/var/run/docker.sock
+      - "{{ dockers_dir }}/{{ item }}-runner/data:/data"
+      - "{{ dockers_dir }}/{{ item }}-runner/config.yaml:/config.yaml"
     env:
-      GITEA_RUNNER_NAME: "runner"
-      GITEA_INSTANCE_URL: "http://{{ item }}.{{ inventory_hostname }}"
+      GITEA_RUNNER_NAME: runner
+      GITEA_INSTANCE_URL: http://{{ item }}.{{ inventory_hostname }}
       GITEA_RUNNER_REGISTRATION_TOKEN: "{{ GITEA_RUNNER_TOKEN }}"
+      CONFIG_FILE: /config.yaml

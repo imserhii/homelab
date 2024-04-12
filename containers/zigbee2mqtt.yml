@@ -1,3 +1,4 @@
+---
 - name: "{{ item }} / create directories"
   file:
     state: directory
@@ -33,7 +34,7 @@
     name: "{{ item }}"
     image: koenkk/zigbee2mqtt
     restart_policy: unless-stopped
-    networks: 
+    networks:
       - name: traefik
     user: "0"
     volumes:
@@ -45,9 +46,9 @@
       traefik.enable: "true"
       traefik.http.services.zigbee2mqtt.loadBalancer.server.port: "8080"
 
-      homepage.group: "services"
+      homepage.group: services
       homepage.name: "{{ item }}"
       homepage.icon: "{{ item }}"
-      homepage.href: "http://{{ item }}.{{ inventory_hostname }}"
+      homepage.href: http://{{ item }}.{{ inventory_hostname }}
     devices:
       - /dev/ttyACM0:/dev/ttyACM0

@@ -1,3 +1,4 @@
+---
 - name: "{{ item }} / add repo"
   deb822_repository:
     name: docker
@@ -34,3 +35,16 @@
     name: docker
     enabled: true
     state: started
+
+- name: "{{ item }} / add watchtower"
+  block:
+    - name: "{{ item }} / pull watchtower image"
+      docker_image:
+        name: containrrr/watchtower:latest
+        source: pull
+
+    - name: "{{ item }} / add update alias"
+      lineinfile:
+        state: present
+        path: /home/{{ ansible_user }}/.zshrc
+        line: alias update-containers="docker run --rm -v /var/run/docker.sock:/var/run/docker.sock containrrr/watchtower --run-once"

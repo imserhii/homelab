@@ -1,3 +1,4 @@
+---
 - name: "{{ item }} / create directories"
   file:
     state: directory
@@ -13,7 +14,7 @@
     name: "{{ item }}"
     image: lscr.io/linuxserver/jackett:latest
     restart_policy: unless-stopped
-    networks: 
+    networks:
       - name: traefik
     user: "0"
     volumes:
@@ -25,10 +26,10 @@
       traefik.enable: "true"
       traefik.http.services.jackett.loadBalancer.server.port: "9117"
 
-      homepage.group: "services"
+      homepage.group: services
       homepage.name: "{{ item }}"
       homepage.icon: "{{ item }}"
-      homepage.href: "http://{{ item }}.{{ inventory_hostname }}"
+      homepage.href: http://{{ item }}.{{ inventory_hostname }}
 
 - name: "{{ item }} / wait for config"
   wait_for:
@@ -41,7 +42,7 @@
     regexp: '"{{ field.key }}": .*,'
     replace: '"{{ field.key }}": {{ field.value }},'
   loop:
-    - { key: "BlackholeDir", value: "\"/downloads/\"" }
+    - { key: BlackholeDir, value: '"/downloads/"' }
   loop_control:
     loop_var: field
 

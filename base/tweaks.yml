@@ -1,6 +1,7 @@
+---
 - name: "{{ item }} / remove welcome message"
   file:
-    path: "/home/{{ ansible_user }}/.hushlogin"
+    path: /home/{{ ansible_user }}/.hushlogin
     state: touch
     modification_time: preserve
     access_time: preserve
@@ -9,4 +10,4 @@
   copy:
     content: "{{ ansible_user }} ALL=(ALL:ALL) NOPASSWD:ALL"
     dest: /etc/sudoers.d/passwordless
-    mode: 0440
+    mode: "0440"

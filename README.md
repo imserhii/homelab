@@ -18,4 +18,4 @@
     - *NTFY_URL*
 2. Add the machine as DNS to your router
 3. `mkcert -cert-file cert.pem -key-file key.pem "*.home.lab" home.lab`
-4. `ansible-playbook run.yml` → [home.lab](http://home.lab)
+4. `ansible-playbook run.yml` → [home.lab](https://home.lab)

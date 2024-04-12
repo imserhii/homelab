@@ -1,3 +1,4 @@
+---
 - name: "{{ item }} / create directories"
   file:
     state: directory
@@ -12,7 +13,8 @@
     dest: "{{ dockers_dir }}/{{ item }}/settings.yaml"
     content: |
       title: {{ inventory_hostname }}
-      color: gray
+      color: stone
+      theme: dark
 
       layout:
         widgets:
@@ -21,6 +23,7 @@
           header: false
 
       hideVersion: true
+      showStats: false
       statusStyle: dot
       headerStyle: clean
 
@@ -35,28 +38,22 @@
   copy:
     dest: "{{ dockers_dir }}/{{ item }}/widgets.yaml"
     content: |
-      - greeting:
-          text_size: xl
-          text: :~)
+      # - greeting:
+      #     text_size: xl
+      #     text: :~)
 
-      - search:
-          provider: custom
-          url: q=
+      # - search:
+      #     provider: custom
+      #     url: q=
 
 - name: "{{ item }} / add services.yaml"
   copy:
     dest: "{{ dockers_dir }}/{{ item }}/services.yaml"
     content: |
-        - widgets:
-          - mainsail:
-              weight: 100
-              icon: mainsail.svg
-              href: http://mainsail.{{ inventory_hostname }}
-              widget:
-                type: moonraker
-                url: http://{{ MAINSAIL_IP }}:7125
-                fields: ["print_status", "print_progress"]
-                hideErrors: true
+      - widgets:
+        - mainsail:
+            icon: mainsail.svg
+            href: http://mainsail.{{ inventory_hostname }}
 
 - name: "{{ item }} / add bookmarks.yaml"
   copy:
@@ -67,91 +64,34 @@
   copy:
     dest: "{{ dockers_dir }}/{{ item }}/custom.css"
     content: |
+      .container {
+        max-width: 1024px !important;
+      }
+
+      .service-block {
+        flex-direction: column-reverse;
+      }
+
+      #page_container {
+        background-color: rgb(17, 17, 17);
+      }
+
+      .service-card {
+        border: 1px solid rgba(225, 225, 225, 0.12);
+        background-color: rgb(28, 28, 28);
+      }
+
+      .service-tags {
+        display: none !important;
+      }
+
       #footer {
         display: none;
       }
 
       #information-widgets {
-        margin-top: 1.5rem
-      }
-
-      #information-widgets .information-widget-search {
-        margin-left: 0.25rem;
-        margin-right: 0.25rem;
-      }
-
-      #information-widgets-right {
-        margin-left: 0;
-      }
-
-      #information-widgets .information-widget-search > .flex-col {
-        margin-top: 0;
-        margin-bottom: 0;
-        height: 2.5rem;
-      }
-
-      #information-widgets .information-widget-search > .flex-col > .text-left {
         display: none;
       }
-
-      #information-widgets .information-widget-search > .flex-col > input {
-        font-family: arial;
-        font-size: .875rem
-      }
-
-      #information-widgets .information-widget-search > .flex-col > input::placeholder {
-        color: hsla(0,0%,100%,.4)
-      }
-
-      .services-group:first-child .service:last-child > div {
-        margin-bottom: 0.25rem;
-      }
-
-- name: "{{ item }} / add custom.js"
-  copy:
-    dest: "{{ dockers_dir }}/{{ item }}/custom.js"
-    content: |
-      let searchpageIframe;
-
-      const addIframe = (q) => {
-        searchpageIframe = document.createElement("iframe");
-
-        searchpageIframe.width = "100%";
-        searchpageIframe.height = "100%";
-        searchpageIframe.src = "http://searchpage.{{ inventory_hostname }}/?iframe=true&" + q;
-        searchpageIframe.style.border = "none";
-        searchpageIframe.style.position = "fixed";
-        searchpageIframe.style.top = "0";
-        searchpageIframe.style.backgroundColor = "rgb(31,41,55)"
-        searchpageIframe.style.left = "0";
-
-        document.body.appendChild(searchpageIframe);
-      };
-
-      const removeIframe = () => {
-        document.body.removeChild(searchpageIframe);
-      };
-
-      window.addEventListener("message", (event) => {
-        if (event.data.type == "close") {
-          removeIframe();
-        }
-      }, false);
-
-      const originalOpen = window.open;
-
-      window.open = (link) => {
-        const tmp = document.createElement("input");
-        document.body.appendChild(tmp);
-        tmp.focus();
-        document.body.removeChild(tmp);
-
-        if (link.includes('q=')) {
-          addIframe(link);
-        } else {
-          originalOpen(link);
-        }
-      };
 
 - name: "{{ item }} / deploy"
   docker_container:
@@ -159,7 +99,7 @@
     name: "{{ item }}"
     image: ghcr.io/gethomepage/homepage
     restart_policy: unless-stopped
-    networks: 
+    networks:
       - name: traefik
     user: "0"
     volumes:
@@ -169,4 +109,5 @@
       - "{{ dockers_dir }}/{{ item }}:/config"
     labels:
       traefik.enable: "true"
-      traefik.http.routers.homepage.rule: "Host(`{{ inventory_hostname }}`)"
+      traefik.http.routers.homepage.tls: "true"
+      traefik.http.routers.homepage.rule: Host(`{{ inventory_hostname }}`)

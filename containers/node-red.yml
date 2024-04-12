@@ -1,3 +1,4 @@
+---
 - name: "{{ item }} / create directories"
   file:
     state: directory
@@ -9,22 +10,22 @@
 
 - name: "{{ item }} / deploy"
   docker_container:
-    state: started
     name: "{{ item }}"
-    image: nodered/node-red
+    state: started
+    image: nodered/node-red:latest-18
     restart_policy: unless-stopped
-    networks: 
+    networks:
       - name: host
     dns_servers:
-      - "172.17.0.1"
-      - "8.8.8.8"
+      - 172.17.0.1
+      - 8.8.8.8
     user: "0"
     volumes:
       - /etc/timezone:/etc/timezone:ro
       - /etc/localtime:/etc/localtime:ro
       - "{{ dockers_dir }}/{{ item }}:/data"
     labels:
-      homepage.group: "services"
+      homepage.group: services
       homepage.name: "{{ item }}"
       homepage.icon: "{{ item }}"
-      homepage.href: "http://{{ item }}.{{ inventory_hostname }}"
+      homepage.href: http://{{ item }}.{{ inventory_hostname }}

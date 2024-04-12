@@ -1,3 +1,4 @@
+---
 - name: "{{ item }} / create directories"
   file:
     state: directory
@@ -20,7 +21,7 @@
 - name: "{{ item }} / download transmissionic"
   unarchive:
     remote_src: true
-    src: "https://github.com/6c65726f79/Transmissionic/releases/download/v1.7.1/Transmissionic-webui-v1.7.1.zip"
+    src: https://github.com/6c65726f79/Transmissionic/releases/download/v1.7.1/Transmissionic-webui-v1.7.1.zip
     dest: "{{ dockers_dir }}/{{ item }}/transmissionic"
 
 - name: "{{ item }} / add transmissionic config"
@@ -33,63 +34,30 @@
         "compactMode": true
       }
 
-- name: "{{ item }} / add transmissionic config"
-  copy:
-    dest: "{{ dockers_dir }}/{{ item }}/transmissionic/web/default.json"
-    content: |
-      {
-        "colorScheme": "dark",
-        "useBits": false,
-        "compactMode": true
-      }
-
-- name: "{{ item }} / add notifiers"
-  copy:
-    dest: "{{ dockers_dir }}/{{ item }}/notifiers/{{ notifier.script }}.sh"
-    mode: a+x
-    content: |
-      #!/bin/sh
-
-      curl {{ NTFY_URL }} \
-        -d "{
-          \"topic\": \"notifications\",
-          \"title\": \"{{ item }}\",
-          \"message\": \"{{ notifier.message }}\",
-          \"click\": \"http://{{ item }}.{{ inventory_hostname }}\"
-        }"
-  loop:
-    - { script: "torrent-added", message: "🆕 ${TR_TORRENT_NAME}" }
-    - { script: "torrent-done", message: "✅ ${TR_TORRENT_NAME}" }
-  loop_control:
-    loop_var: notifier
-  
 - name: "{{ item }} / deploy"
   docker_container:
     state: started
     name: "{{ item }}"
     image: linuxserver/transmission
     restart_policy: unless-stopped
-    networks: 
+    networks:
       - name: traefik
     user: "0"
     volumes:
       - /etc/timezone:/etc/timezone:ro
       - /etc/localtime:/etc/localtime:ro
-      - "/mnt/sdb:/downloads"
+      - /mnt/sdb:/downloads
       - "{{ dockers_dir }}/{{ item }}/config:/config"
       - "{{ dockers_dir }}/{{ item }}/watch:/watch"
       - "{{ dockers_dir }}/{{ item }}/transmissionic/web:/usr/share/transmission/public_html"
-      - "{{ dockers_dir }}/{{ item }}/notifiers:/notifiers"
     labels:
       traefik.enable: "true"
-
-      homepage.group: "widgets"
+      homepage.weight: "30"
+      homepage.group: widgets
       homepage.name: "{{ item }}"
       homepage.icon: "{{ item }}"
-      homepage.href: "http://{{ item }}.{{ inventory_hostname }}"
-      homepage.widget.url: "http://{{ item }}:9091"
-      homepage.widget.type: "transmission"
-      homepage.widget.fields: '["download", "upload"]'
+      homepage.href: http://{{ item }}.{{ inventory_hostname }}
+
     env:
       WHITELIST: "*"
       HOST_WHITELIST: "*"
@@ -101,13 +69,11 @@
 - name: "{{ item }} / process config"
   vars:
     changes:
-      - { key: "download-dir", value: "\"/downloads/\"" }
-      - { key: "incomplete-dir-enabled", value: "false" }
-      - { key: "trash-original-torrent-files", value: "true" }
-      - { key: "script-torrent-added-enabled", value: "true" }
-      - { key: "script-torrent-added-filename", value: "\"/notifiers/torrent-added.sh\"" }
-      - { key: "script-torrent-done-enabled", value: "true" }
-      - { key: "script-torrent-done-filename", value: "\"/notifiers/torrent-done.sh\"" }
+      - { key: download-dir, value: '"/downloads/"' }
+      - { key: incomplete-dir-enabled, value: "false" }
+      - { key: trash-original-torrent-files, value: "true" }
+      - { key: script-torrent-added-enabled, value: "true" }
+      - { key: script-torrent-done-enabled, value: "true" }
 
   block:
     - name: "{{ item }} / check config"
@@ -142,13 +108,3 @@
       docker_container:
         state: started
         name: "{{ item }}"
-
-- name: "{{ item }} / remove weird dirs"
-  file:
-    path: "/mnt/sdb/{{ weird_dir }}"
-    state: absent
-  loop:
-    - complete
-    - incomplete
-  loop_control:
-    loop_var: weird_dir

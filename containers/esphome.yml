@@ -1,4 +1,5 @@
-- name: "{{ item }} / create directories"
+---
+- name: "{{ item }} / creaіаte directories"
   file:
     state: directory
     path: "{{ dir }}"
@@ -13,7 +14,7 @@
     name: "{{ item }}"
     image: ghcr.io/esphome/esphome
     restart_policy: unless-stopped
-    networks: 
+    networks:
       - name: traefik
     user: "0"
     privileged: true
@@ -25,10 +26,10 @@
       traefik.enable: "true"
       traefik.http.services.esphome.loadBalancer.server.port: "6052"
 
-      homepage.group: "services"
+      homepage.group: services
       homepage.name: "{{ item }}"
       homepage.icon: "{{ item }}"
-      homepage.href: "http://{{ item }}.{{ inventory_hostname }}"
+      homepage.href: http://{{ item }}.{{ inventory_hostname }}
     env:
       ESPHOME_DASHBOARD_USE_PING: "true"
     devices:

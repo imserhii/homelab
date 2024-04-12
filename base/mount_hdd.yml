@@ -1,3 +1,4 @@
+---
 - name: "{{ item }} / install deps"
   apt:
     name:
@@ -18,7 +19,7 @@
     dest: /mnt/sdb
     owner: "{{ ansible_user }}"
     group: "{{ ansible_user }}"
-    mode: 0777
+    mode: "0777"
     recurse: true
 
 - name: "{{ item }} / enable"
@@ -59,5 +60,5 @@
     command: smbpasswd -a {{ ansible_user }}
     timeout: 3
     responses:
-      "New SMB password": "{{ ansible_ssh_pass }}"
-      "Retype new SMB password": "{{ ansible_ssh_pass }}"
+      New SMB password: "{{ ansible_ssh_pass }}"
+      Retype new SMB password: "{{ ansible_ssh_pass }}"

@@ -1,3 +1,4 @@
+---
 - name: "{{ item }} / create directories"
   file:
     state: directory
@@ -13,7 +14,7 @@
     name: "{{ item }}"
     image: grafana/grafana-oss
     restart_policy: unless-stopped
-    networks: 
+    networks:
       - name: traefik
     user: "0"
     volumes:
@@ -23,7 +24,7 @@
     labels:
       traefik.enable: "true"
 
-      homepage.group: "services"
+      homepage.group: services
       homepage.name: "{{ item }}"
       homepage.icon: "{{ item }}"
-      homepage.href: "http://{{ item }}.{{ inventory_hostname }}"
+      homepage.href: http://{{ item }}.{{ inventory_hostname }}

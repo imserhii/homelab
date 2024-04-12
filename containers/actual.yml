@@ -1,3 +1,4 @@
+---
 - name: "{{ item }} / create directories"
   file:
     state: directory
@@ -10,11 +11,11 @@
 
 - name: "{{ item }} / deploy"
   docker_container:
-    state: started
     name: "{{ item }}"
+    state: started
     image: actualbudget/actual-server:latest
     restart_policy: unless-stopped
-    networks: 
+    networks:
       - name: traefik
     user: "0"
     volumes:
@@ -22,22 +23,25 @@
       - /etc/localtime:/etc/localtime:ro
       - "{{ dockers_dir }}/traefik/certs:/certs:ro"
       - "{{ dockers_dir }}/{{ item }}:/data"
+    env:
+      DEBUG: actual:config
     labels:
       traefik.enable: "true"
       traefik.http.routers.actual.tls: "true"
 
-      homepage.group: "services"
+      homepage.group: services
       homepage.name: "{{ item }}"
       homepage.icon: "{{ item }}"
-      homepage.href: "https://{{ item }}.{{ inventory_hostname }}"
+      homepage.href: https://{{ item }}.{{ inventory_hostname }}
 
 - name: "{{ item }} / deploy api"
   docker_container:
-    state: started
     name: "{{ item }}-api"
+    state: started
+    pull: true
     image: jhonderson/actual-http-api:latest
     restart_policy: unless-stopped
-    networks: 
+    networks:
       - name: traefik
     user: "0"
     volumes:
@@ -47,6 +51,7 @@
     labels:
       traefik.enable: "true"
     env:
-      ACTUAL_SERVER_URL: "http://{{ item }}:5006"
+      ACTUAL_SERVER_URL: http://{{ item }}:5006
       ACTUAL_SERVER_PASSWORD: "{{ PASSWORD }}"
       API_KEY: "{{ item }}"
+      NODE_TLS_REJECT_UNAUTHORIZED: "0"

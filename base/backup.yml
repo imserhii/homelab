@@ -1,40 +1,81 @@
+---
 - name: "{{ item }} / install packages"
   apt:
     name:
-      - zip
-      - rsync
+      - borgbackup
+      - rclone
     state: latest
     update_cache: true
 
 - name: "{{ item }} / mount flash drive"
-  mount:
+  ansible.posix.mount:
     src: UUID=ce8aaf0e-3abc-49ee-aa22-204ce5735917
-    path: /mnt/sdc
+    path: "{{ backup_dir }}"
     fstype: ext4
     state: mounted
 
-- name: "{{ item }} / add rsync config"
-  copy:
-    dest: /home/{{ ansible_user }}/.backup-config
-    content: |
-      - .esphome
-      - .npm
-      - node_modules
-      - transmission/transmissionic/web
+- name: "{{ item }} / prepare borg"
+  vars:
+    repo: "{{ backup_dir }}/{{ inventory_hostname }}.borg"
+  block:
+    - name: "{{ item }} / check if repo exists"
+      register: borg_repo
+      stat:
+        path: "{{ repo }}"
 
-- name: "{{ item }} / add backup script"
+    - name: "{{ item }} / create repo if not"
+      when: borg_repo.stat.exists == false
+      command: borg init --encryption none {{ repo }}
+
+- name: "{{ item }} / prepare rclone"
+  block:
+    - name: "{{ item }} / create directories"
+      file:
+        state: directory
+        recurse: true
+        path: "{{ dir }}"
+      loop:
+        - /home/{{ ansible_user }}/.config/rclone
+      loop_control:
+        loop_var: dir
+
+    - name: "{{ item }} / add config"
+      copy:
+        dest: /home/{{ ansible_user }}/.config/rclone/rclone.conf
+        content: |
+          [remote]
+          type = drive
+          scope = drive
+          team_drive =
+          client_id = {{ RCLONE_CLIENT_ID }}
+          client_secret = {{ RCLONE_CLIENT_SECRET }}
+          token = {{ RCLONE_TOKEN }}
+
+- name: "{{ item }} / add cron"
   copy:
     dest: /home/{{ ansible_user }}/.backup.sh
     mode: a+x
     content: |
       #!/bin/sh
-      rsync -rvzh --include-from=/home/{{ ansible_user }}/.backup-config /home/{{ ansible_user }}/dockers/ /mnt/sdc/backup/
-      zip -r /mnt/sdc/backup-`date +%d-%m-%Y`.zip /mnt/sdc/backup/
-      rm -rf /mnt/sdc/backup/
 
-- name: "{{ item }} / add every monday cronjob"
+      sleep 5
+
+      export BORG_RELOCATED_REPO_ACCESS_IS_OK=no
+      export BORG_UNKNOWN_UNENCRYPTED_REPO_ACCESS_IS_OK=no
+
+      NAME=$(date --iso-8601)-{{ inventory_hostname }}
+      REPO={{ backup_dir }}/{{ inventory_hostname }}.borg
+
+      cd {{ dockers_dir }}
+
+      borg create $REPO::$NAME .
+      borg prune --keep-last 7 $REPO
+
+      rclone sync $REPO remote:/backups/{{ inventory_hostname }}.borg
+
+- name: "{{ item }} / do cronjob"
   cron:
     name: backup
     minute: 0
-    hour: 0
-    job: "/home/{{ ansible_user }}/.backup.sh"
+    hour: 4
+    job: /home/{{ ansible_user }}/.backup.sh

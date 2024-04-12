@@ -1,3 +1,4 @@
+---
 - name: "{{ item }} / install packages"
   apt:
     name:
@@ -12,7 +13,7 @@
     - name: "{{ item }} / check"
       register: oh_my_zsh_folder
       stat:
-        path: "/home/{{ ansible_user }}/.oh-my-zsh"
+        path: /home/{{ ansible_user }}/.oh-my-zsh
     - name: "{{ item }} / install"
       when: oh_my_zsh_folder.stat.exists == false
       become_user: "{{ ansible_user }}"
@@ -20,22 +21,21 @@
 
 - name: "{{ item }} / fix locale"
   block:
-
     - name: "{{ item }} / check"
       register: locale_fix
       check_mode: true
       changed_when: false
       lineinfile:
         state: absent
-        path: "/home/{{ ansible_user }}/.zshrc"
-        regexp: "^export LC_ALL=en_US.UTF-8"
+        path: /home/{{ ansible_user }}/.zshrc
+        regexp: ^export LC_ALL=en_US.UTF-8
 
     - name: "{{ item }} / fix"
       when: locale_fix.found == 0
       lineinfile:
         state: present
-        path: "/home/{{ ansible_user }}/.zshrc"
-        line: "export LC_ALL=en_US.UTF-8"
+        path: /home/{{ ansible_user }}/.zshrc
+        line: export LC_ALL=en_US.UTF-8
 
 - name: "{{ item }} / set zsh as default shell"
   user:

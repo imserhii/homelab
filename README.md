@@ -1,6 +1,6 @@
 # home.lab
 
-<img width="1091" alt="Screenshot 2024-01-11 at 16 39 05" src="https://github.com/imserhii/homelab/assets/4532683/8ee1f817-8a80-45fd-932b-8d3fcdb7c17c">
+<img width="1223" alt="Screenshot 2024-04-12 at 15 10 58" src="https://github.com/imserhii/homelab/assets/4532683/c0d51ace-6a50-4ac6-a2e8-730a1c7f3bc2">
 
 ### Requirements:
 - Ansible

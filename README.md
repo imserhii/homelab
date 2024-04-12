@@ -12,10 +12,13 @@
     - *USERNAME*
     - *PASSWORD*
     - *HOST_IP*
+    - *EXTERNAL_HOSTNAME*
     - *MAINSAIL_IP*
     - *GITEA_RUNNER_TOKEN*
     - *INFLUXDB_TOKEN*
-    - *NTFY_URL*
+    - *RCLONE_CLIENT_ID*
+    - *RCLONE_CLIENT_SECRET*
+    - *RCLONE_TOKEN*
 2. Add the machine as DNS to your router
 3. `mkcert -cert-file cert.pem -key-file key.pem "*.home.lab" home.lab`
 4. `ansible-playbook run.yml` → [home.lab](https://home.lab)
